@@ -1,14 +1,13 @@
 package com.chatapp.auth.Auth.config;
 
-import com.chatapp.auth.Auth.model.User;
 import com.chatapp.auth.Auth.service.JwtService;
+import com.chatapp.auth.model.User;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -21,6 +20,7 @@ import java.io.IOException;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
+
     private final HandlerExceptionResolver handlerExceptionResolver;
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
@@ -32,35 +32,45 @@ public class JwtFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request,@NonNull HttpServletResponse response,@NonNull FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain
+    ) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
+
+        // Check for Bearer token in Authorization header
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        try{
-            final String jwt = authHeader.substring(7);
-            final String username = jwtService.extractUsername(jwt);
+        final String jwtToken = authHeader.substring(7); // Remove "Bearer " prefix
+        try {
+            String username = jwtService.extractUsername(jwtToken);
 
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            // Ensure the user is not already authenticated in the SecurityContext
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-            if (username != null && authentication == null) {
-                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-                if (jwtService.isTokenValid(jwt, (User) userDetails)) {
+                // Validate JWT token against the user details
+                if (jwtService.isTokenValid(jwtToken, (User) userDetails)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities()
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
 
+                    // Set authentication in the security context
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
-            filterChain.doFilter(request, response);
         } catch (Exception e) {
-            handlerExceptionResolver.resolveException(request,response,null,e);
+            // Log the exception and resolve it through HandlerExceptionResolver
+            handlerExceptionResolver.resolveException(request, response, null, e);
+            return; // Exit early on exception
         }
+
+        // Continue filter chain after successful processing
+        filterChain.doFilter(request, response);
     }
-
-
 }

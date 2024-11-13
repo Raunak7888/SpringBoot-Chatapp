@@ -1,6 +1,6 @@
 package com.chatapp.auth.Auth.config;
 
-import com.chatapp.auth.Auth.repository.UserRepository;
+import com.chatapp.auth.repository.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -11,10 +11,14 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Configuration
 public class ApplicationConfiguration {
+
     private final UserRepository userRepo;
+    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class);
 
     public ApplicationConfiguration(UserRepository userRepo) {
         this.userRepo = userRepo;
@@ -22,8 +26,11 @@ public class ApplicationConfiguration {
 
     @Bean
     public UserDetailsService userDetailsService() {
-        return email -> userRepo.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return email -> userRepo.findByUsername(email)
+                .orElseThrow(() -> {
+                    logger.warn("User with username '{}' not found", email);  // Log failed login attempts
+                    return new UsernameNotFoundException("User not found");
+                });
     }
 
     @Bean
@@ -39,12 +46,8 @@ public class ApplicationConfiguration {
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-
         authProvider.setUserDetailsService(userDetailsService());
         authProvider.setPasswordEncoder(passwordEncoder());
-
         return authProvider;
     }
-
 }
-

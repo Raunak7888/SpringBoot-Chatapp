@@ -5,7 +5,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
-//@ComponentScan({"com.chatapp.auth"})
 public class ChatAppApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(ChatAppApplication.class, args);
