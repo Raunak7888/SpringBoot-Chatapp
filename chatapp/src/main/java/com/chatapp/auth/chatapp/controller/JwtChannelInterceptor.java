@@ -14,13 +14,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.util.List;
-
 @Component
 public class JwtChannelInterceptor implements ChannelInterceptor {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtChannelInterceptor.class);
-
     private final JwtService jwtService;
 
     @Autowired
@@ -32,29 +29,39 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     public Message<?> preSend(@NonNull Message<?> message, @NonNull MessageChannel channel) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
+        // Only intercept the CONNECT command
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
             String authHeader = accessor.getFirstNativeHeader("Authorization");
 
+            // Check for Authorization header with Bearer token
             if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-                String jwtToken = authHeader.substring(7);
-                try {
-                    String username = jwtService.extractUsername(jwtToken);
+                logger.info("Received WebSocket connection with Authorization header");
 
+                String jwtToken = authHeader.substring(7); // Extract token after "Bearer "
+
+                try {
+                    // Extract username from the token
+                    String username = jwtService.extractUsername(jwtToken);
                     if (jwtService.isValid(jwtToken, username)) {
-                        accessor.setUser(new UsernamePasswordAuthenticationToken(username, null, List.of()));
+                        // Set the user in the WebSocket context without roles
+                        accessor.setUser(new UsernamePasswordAuthenticationToken(username, null));
                         logger.info("User '{}' authenticated successfully via WebSocket", username);
                     } else {
-                        logger.warn("Invalid JWT Token for user '{}'", username);
+                        // Invalid token case
+                        logger.warn("Invalid JWT token for user '{}'", username);
                         throw new IllegalArgumentException("Invalid JWT Token");
                     }
                 } catch (Exception e) {
+                    // Log and rethrow the error with proper message
                     logger.error("WebSocket connection failed: {}", e.getMessage());
                     throw new IllegalArgumentException("Invalid JWT Token", e);
                 }
             } else {
+                // Missing or improperly formatted Authorization header
                 logger.warn("Authorization header missing or incorrectly formatted in WebSocket connection");
+                throw new IllegalArgumentException("Authorization header missing or incorrectly formatted");
             }
         }
-        return message;
+        return message; // Continue with the message if everything is valid
     }
 }

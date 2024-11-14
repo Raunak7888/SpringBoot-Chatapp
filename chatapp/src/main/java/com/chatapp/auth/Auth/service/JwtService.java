@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.security.Key;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class JwtService {
@@ -104,4 +105,29 @@ public class JwtService {
 
         return new UsernamePasswordAuthenticationToken(username, null, authorities);
     }
+
+
+    public List<SimpleGrantedAuthority> extractAuthorities(String token) {
+        Claims claims = extractAllClaims(token);
+
+        // Retrieve the roles claim and ensure it's a List<String>
+        Object rolesClaim = claims.get("roles");
+
+        if (rolesClaim instanceof List<?> rawRoles) {
+
+            // Check if all elements in the list are Strings
+            if (rawRoles.isEmpty() || rawRoles.getFirst() instanceof String) {
+                List<String> roles = (List<String>) rawRoles;
+
+                return roles.stream()
+                        .map(SimpleGrantedAuthority::new)
+                        .collect(Collectors.toList());
+            } else {
+                throw new IllegalArgumentException("Roles must be a list of strings.");
+            }
+        } else {
+            throw new IllegalArgumentException("Roles claim is not a list.");
+        }
+    }
+
 }

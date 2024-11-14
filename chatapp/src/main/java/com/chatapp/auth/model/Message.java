@@ -22,26 +22,29 @@ public class Message {
     @Column(nullable = false)
     private LocalDateTime timestamp;
 
-    @ManyToOne
-    @JoinColumn(name = "sender_id", nullable = false)
-    private User sender;
+    @Column(name = "sender_id", nullable = false)
+    private Long senderId; // Stores the sender's ID
 
-    @ManyToOne
-    @JoinColumn(name = "group_chat_id")
-    private GroupChat groupChat;
+    @Column(name = "receiver_id")
+    private Long receiverId; // Stores the receiver's ID for one-to-one messages
+
+    @Column(name = "group_chat_id")
+    private Long groupChatId; // Stores the group chat's ID for group messages
 
     public Message() {
         this.timestamp = LocalDateTime.now(); // Default to current time if no timestamp is provided
     }
 
-    public Message(String content, User sender, GroupChat groupChat) {
+    // Constructor for group messages
+    public Message(String content, Long senderId, Long groupChatId, boolean isGroupMessage) {
         this.content = content;
-        this.sender = sender;
-        this.groupChat = groupChat;
+        this.senderId = senderId;
         this.timestamp = LocalDateTime.now();
-    }
 
-    public Message(String content, User sender) {
-        this(content, sender, null);
+        if (isGroupMessage) {
+            this.groupChatId = groupChatId;
+        } else {
+            this.receiverId = groupChatId; // In this case, `groupChatId` actually represents the receiver's ID
+        }
     }
 }

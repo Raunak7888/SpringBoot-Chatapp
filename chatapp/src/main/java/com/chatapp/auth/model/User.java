@@ -50,14 +50,14 @@ public class User implements UserDetails {
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
 
-    @OneToMany(mappedBy = "sender")
+    @OneToMany(mappedBy = "senderId")
     private Set<Message> messages = new HashSet<>();
 
-    @ManyToMany
-    @JoinTable(name = "group_chat_users",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "group_chat_id"))
-    private Set<GroupChat> groupChats = new HashSet<>();
+//    @ManyToMany
+//    @JoinTable(name = "group_chat_users",
+//            joinColumns = @JoinColumn(name = "user_id"),
+//            inverseJoinColumns = @JoinColumn(name = "group_chat_id"))
+////    private Set<GroupChat> groupChats = new HashSet<>();
 
     public User(String username, String email, String password) {
         this.username = username;
